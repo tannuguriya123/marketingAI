@@ -1,5 +1,16 @@
 const Groq = require('groq-sdk');
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+const DEFAULT_GROQ_MODEL = 'openai/gpt-oss-20b';
+
+function normalizeTips(tips) {
+    if (Array.isArray(tips)) {
+        return tips.map((tip) => String(tip).trim()).filter(Boolean);
+    }
+
+    return String(tips || '')
+        .split(/\n+/)
+        .map((tip) => tip.replace(/^[-*•]\s*/, '').trim())
+        .filter(Boolean);
+}
 
 async function analyzeContent(text) {
     if (!process.env.GROQ_API_KEY) {
@@ -18,9 +29,10 @@ async function analyzeContent(text) {
     `;
 
     try {
+        const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
         const chatCompletion = await groq.chat.completions.create({
             messages: [{ role: 'user', content: prompt }],
-            model: 'openai/gpt-oss-20b', // Fast and JSON-capable
+            model: process.env.GROQ_MODEL || DEFAULT_GROQ_MODEL,
             response_format: { type: 'json_object' },
             temperature: 0.7,
         });
@@ -34,7 +46,7 @@ async function analyzeContent(text) {
         return {
             caption: parsed.caption || '',
             imagePrompt: parsed.imagePrompt || '',
-            tips: Array.isArray(parsed.tips) ? parsed.tips.join('\n') : (parsed.tips || '')
+            tips: normalizeTips(parsed.tips)
         };
     } catch (error) {
         throw new Error(`Groq LLM failed: ${error.message}`);

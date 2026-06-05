@@ -6,11 +6,24 @@ const { analyzeContent } = require('./services/llm');
 const { generateImage } = require('./services/vision');
 
 const app = express();
+
+const allowedOrigins = (process.env.CORS_ORIGIN || 'https://marketing-ai-tan.vercel.app,http://localhost:5173')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
+app.disable('x-powered-by');
 app.use(cors({
-    origin: 'https://marketing-ai-tan.vercel.app', // Update with your frontend URL
+    origin(origin, callback) {
+        if (!origin || allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+
+        return callback(new Error('Not allowed by CORS'));
+    },
     credentials: true
 }));
-app.use(express.json());
+app.use(express.json({ limit: '64kb' }));
 
 const isValidHttpUrl = (value) => {
     try {
@@ -22,7 +35,7 @@ const isValidHttpUrl = (value) => {
 };
 
 app.post('/api/generate', async (req, res) => {
-    const { url } = req.body;
+    const url = typeof req.body?.url === 'string' ? req.body.url.trim() : '';
     if (!url) return res.status(400).json({ error: "URL is required" });
     if (!isValidHttpUrl(url)) {
         return res.status(400).json({ error: "Please provide a valid http or https URL." });
@@ -52,5 +65,13 @@ app.post('/api/generate', async (req, res) => {
     }
 });
 
+app.get('/api/health', (_req, res) => {
+    res.json({ status: 'ok' });
+});
+
 const PORT = process.env.PORT || 5000;
-app.listen(PORT,'0.0.0.0', () => console.log(`Pipeline API running on port ${PORT}`));
+if (require.main === module) {
+    app.listen(PORT, '0.0.0.0', () => console.log(`Pipeline API running on port ${PORT}`));
+}
+
+module.exports = app;

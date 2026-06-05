@@ -3,5 +3,3 @@ node_modules/
 .env.local
 .env.development.local
 .env.*.local
-package.json
-package-lock.json
