@@ -1,8 +1,22 @@
 import { useState } from 'react';
 import axios from 'axios';
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
+const configuredApiBaseUrl = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
 const API_TIMEOUT_MS = 180000;
+
+function getApiBaseUrl() {
+  if (
+    typeof window !== 'undefined'
+    && window.location.hostname.endsWith('.vercel.app')
+    && configuredApiBaseUrl.includes('onrender.com')
+  ) {
+    return '';
+  }
+
+  return configuredApiBaseUrl;
+}
+
+const API_BASE_URL = getApiBaseUrl();
 
 function getImageExtension(dataUrl) {
   const mime = dataUrl.match(/^data:(image\/[a-z0-9.+-]+);base64,/i)?.[1];

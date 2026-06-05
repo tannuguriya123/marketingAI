@@ -7,22 +7,42 @@ const { generateImage } = require('./services/vision');
 
 const app = express();
 
-const allowedOrigins = (process.env.CORS_ORIGIN || 'https://marketing-ai-tan.vercel.app,http://localhost:5173')
+const normalizeOrigin = (origin) => String(origin || '').trim().replace(/\/$/, '');
+const allowedOrigins = (process.env.CORS_ORIGIN || process.env.FRONTEND_URL || 'https://marketing-ai-tan.vercel.app,http://localhost:5173')
     .split(',')
-    .map((origin) => origin.trim())
+    .map(normalizeOrigin)
     .filter(Boolean);
+const allowAllOrigins = allowedOrigins.includes('*');
 
-app.disable('x-powered-by');
-app.use(cors({
+function isAllowedOrigin(origin) {
+    const normalizedOrigin = normalizeOrigin(origin);
+
+    if (!normalizedOrigin) return true;
+    if (allowAllOrigins || allowedOrigins.includes(normalizedOrigin)) return true;
+    if (/^https:\/\/marketing-ai-tan-[a-z0-9-]+\.vercel\.app$/i.test(normalizedOrigin)) return true;
+    if (/^http:\/\/localhost:\d+$/i.test(normalizedOrigin)) return true;
+    if (/^http:\/\/127\.0\.0\.1:\d+$/i.test(normalizedOrigin)) return true;
+
+    return false;
+}
+
+const corsOptions = {
     origin(origin, callback) {
-        if (!origin || allowedOrigins.includes(origin)) {
+        if (isAllowedOrigin(origin)) {
             return callback(null, true);
         }
 
-        return callback(new Error('Not allowed by CORS'));
+        return callback(null, false);
     },
-    credentials: true
-}));
+    credentials: true,
+    methods: ['GET', 'POST', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    optionsSuccessStatus: 204
+};
+
+app.disable('x-powered-by');
+app.use(cors(corsOptions));
+app.options(/.*/, cors(corsOptions));
 app.use(express.json({ limit: '64kb' }));
 
 const isValidHttpUrl = (value) => {
