@@ -6,7 +6,10 @@ const { analyzeContent } = require('./services/llm');
 const { generateImage } = require('./services/vision');
 
 const app = express();
-app.use(cors());
+app.use(cors({
+    origin: 'https://marketing-ai-tan.vercel.app', // Update with your frontend URL
+    credentials: true
+}));
 app.use(express.json());
 
 const isValidHttpUrl = (value) => {
