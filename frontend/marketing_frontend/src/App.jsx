@@ -1,37 +1,7 @@
 import { useState } from 'react';
 import axios from 'axios';
 
-const configuredApiBaseUrl = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
-const API_TIMEOUT_MS = 180000;
-
-function getApiBaseUrl() {
-  if (
-    typeof window !== 'undefined'
-    && window.location.hostname.endsWith('.vercel.app')
-    && configuredApiBaseUrl.includes('onrender.com')
-  ) {
-    return '';
-  }
-
-  return configuredApiBaseUrl;
-}
-
-const API_BASE_URL = getApiBaseUrl();
-
-function getImageExtension(dataUrl) {
-  const mime = dataUrl.match(/^data:(image\/[a-z0-9.+-]+);base64,/i)?.[1];
-  if (mime === 'image/jpeg') return 'jpg';
-  if (mime === 'image/webp') return 'webp';
-  return 'png';
-}
-
-function normalizeTips(tips) {
-  if (Array.isArray(tips)) return tips.filter(Boolean);
-  return String(tips || '')
-    .split(/\n+/)
-    .map((tip) => tip.replace(/^[-*•]\s*/, '').trim())
-    .filter(Boolean);
-}
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
 function App() {
   const [url, setUrl] = useState('');
@@ -41,24 +11,15 @@ function App() {
 
   const generateCampaign = async (e) => {
     e.preventDefault();
-    const cleanUrl = url.trim();
-
-    if (!cleanUrl) {
-      setError('Please enter a website URL.');
-      return;
-    }
-
     setLoading(true);
     setError('');
     setResult(null);
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/api/generate`, { url: cleanUrl }, {
-        timeout: API_TIMEOUT_MS,
-      });
+      const response = await axios.post(`${API_BASE_URL}/api/generate`, { url });
       setResult(response.data);
     } catch (err) {
-      setError(err.response?.data?.error || err.message || 'Failed to connect to the pipeline server.');
+      setError(err.response?.data?.error || 'Failed to connect to the pipeline server.');
     } finally {
       setLoading(false);
     }
@@ -70,13 +31,13 @@ function App() {
     // Download Image
     const link = document.createElement('a');
     link.href = result.image;
-    link.download = `marketing-graphic.${getImageExtension(result.image)}`;
+    link.download = 'marketing-graphic.jpg';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
 
     // Download Text Content
-    const tips = normalizeTips(result.tips).join('\n');
+    const tips = Array.isArray(result.tips) ? result.tips.join('\n') : result.tips;
     const textContent = `CAPTION:\n${result.caption}\n\nTIPS:\n${tips || ''}`;
     const blob = new Blob([textContent], { type: 'text/plain' });
     const textLink = document.createElement('a');
@@ -89,7 +50,7 @@ function App() {
     URL.revokeObjectURL(textUrl);
   };
 
-  const tips = normalizeTips(result?.tips);
+  const tips = Array.isArray(result?.tips) ? result.tips.join('\n') : result?.tips;
 
   return (
     <div className="min-h-screen bg-gray-50 p-8 font-sans text-gray-800">
@@ -107,13 +68,11 @@ function App() {
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               placeholder="https://your-product-page.com" 
-              disabled={loading}
-              autoComplete="url"
               className="flex-1 px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 outline-none transition"
             />
             <button 
               type="submit" 
-              disabled={loading || !url.trim()}
+              disabled={loading}
               className="bg-indigo-600 text-white px-8 py-3 rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50 transition"
             >
               {loading ? 'Orchestrating...' : 'Generate'}
@@ -148,11 +107,7 @@ function App() {
 
               <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
                 <h2 className="text-xl font-bold mb-4">Strategy Tips</h2>
-                <ul className="list-disc space-y-2 pl-5 text-gray-600">
-                  {tips.map((tip) => (
-                    <li key={tip}>{tip}</li>
-                  ))}
-                </ul>
+                <p className="text-gray-600 whitespace-pre-line">{tips}</p>
               </div>
               
               <div className="bg-gray-100 p-4 rounded-xl text-sm text-gray-500">

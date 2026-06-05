@@ -6,44 +6,8 @@ const { analyzeContent } = require('./services/llm');
 const { generateImage } = require('./services/vision');
 
 const app = express();
-
-const normalizeOrigin = (origin) => String(origin || '').trim().replace(/\/$/, '');
-const allowedOrigins = (process.env.CORS_ORIGIN || process.env.FRONTEND_URL || 'https://marketing-ai-tan.vercel.app,http://localhost:5173')
-    .split(',')
-    .map(normalizeOrigin)
-    .filter(Boolean);
-const allowAllOrigins = allowedOrigins.includes('*');
-
-function isAllowedOrigin(origin) {
-    const normalizedOrigin = normalizeOrigin(origin);
-
-    if (!normalizedOrigin) return true;
-    if (allowAllOrigins || allowedOrigins.includes(normalizedOrigin)) return true;
-    if (/^https:\/\/marketing-ai-tan-[a-z0-9-]+\.vercel\.app$/i.test(normalizedOrigin)) return true;
-    if (/^http:\/\/localhost:\d+$/i.test(normalizedOrigin)) return true;
-    if (/^http:\/\/127\.0\.0\.1:\d+$/i.test(normalizedOrigin)) return true;
-
-    return false;
-}
-
-const corsOptions = {
-    origin(origin, callback) {
-        if (isAllowedOrigin(origin)) {
-            return callback(null, true);
-        }
-
-        return callback(null, false);
-    },
-    credentials: true,
-    methods: ['GET', 'POST', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    optionsSuccessStatus: 204
-};
-
-app.disable('x-powered-by');
-app.use(cors(corsOptions));
-app.options(/.*/, cors(corsOptions));
-app.use(express.json({ limit: '64kb' }));
+app.use(cors());
+app.use(express.json());
 
 const isValidHttpUrl = (value) => {
     try {
@@ -55,7 +19,7 @@ const isValidHttpUrl = (value) => {
 };
 
 app.post('/api/generate', async (req, res) => {
-    const url = typeof req.body?.url === 'string' ? req.body.url.trim() : '';
+    const { url } = req.body;
     if (!url) return res.status(400).json({ error: "URL is required" });
     if (!isValidHttpUrl(url)) {
         return res.status(400).json({ error: "Please provide a valid http or https URL." });
@@ -85,13 +49,5 @@ app.post('/api/generate', async (req, res) => {
     }
 });
 
-app.get('/api/health', (_req, res) => {
-    res.json({ status: 'ok' });
-});
-
 const PORT = process.env.PORT || 5000;
-if (require.main === module) {
-    app.listen(PORT, '0.0.0.0', () => console.log(`Pipeline API running on port ${PORT}`));
-}
-
-module.exports = app;
+app.listen(PORT, () => console.log(`Pipeline API running on port ${PORT}`));
