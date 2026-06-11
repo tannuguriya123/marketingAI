@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/+$/, '');
+const GENERATE_ENDPOINT = `${API_BASE_URL}/api/generate`;
 
 function App() {
   const [url, setUrl] = useState('');
@@ -16,10 +17,15 @@ function App() {
     setResult(null);
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/api/generate`, { url });
+      const response = await axios.post(GENERATE_ENDPOINT, { url }, { timeout: 180000 });
       setResult(response.data);
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to connect to the pipeline server.');
+      const serverError = err.response?.data?.error;
+      const networkError = err.code === 'ECONNABORTED'
+        ? 'The pipeline server took too long to respond. Please try again.'
+        : 'Failed to connect to the pipeline server. Make sure the backend is running and reachable.';
+
+      setError(serverError || networkError);
     } finally {
       setLoading(false);
     }
