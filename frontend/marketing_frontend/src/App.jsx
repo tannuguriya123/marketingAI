@@ -5,6 +5,27 @@ const configuredApiBaseUrl = (import.meta.env.VITE_API_BASE_URL || '').replace(/
 const apiBaseUrl = import.meta.env.DEV ? configuredApiBaseUrl : '';
 const GENERATE_ENDPOINT = `${apiBaseUrl}/api/generate`;
 
+const normalizeGenerateResponse = (data) => {
+  const payload = data?.data && typeof data.data === 'object' ? data.data : data;
+
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    throw new Error('The pipeline returned an invalid response.');
+  }
+
+  const normalized = {
+    caption: payload.caption || payload.marketingCaption || '',
+    imagePrompt: payload.imagePrompt || payload.image_prompt || payload.prompt || '',
+    tips: Array.isArray(payload.tips) ? payload.tips.join('\n') : (payload.tips || ''),
+    image: payload.image || payload.imageUrl || payload.image_url || ''
+  };
+
+  if (!normalized.caption && !normalized.imagePrompt && !normalized.tips && !normalized.image) {
+    throw new Error('The pipeline returned an empty response.');
+  }
+
+  return normalized;
+};
+
 function App() {
   const [url, setUrl] = useState('');
   const [loading, setLoading] = useState(false);
@@ -19,9 +40,9 @@ function App() {
 
     try {
       const response = await axios.post(GENERATE_ENDPOINT, { url }, { timeout: 180000 });
-      setResult(response.data);
+      setResult(normalizeGenerateResponse(response.data));
     } catch (err) {
-      const serverError = err.response?.data?.error;
+      const serverError = err.response?.data?.error || err.message;
       const networkError = err.code === 'ECONNABORTED'
         ? 'The pipeline server took too long to respond. Please try again.'
         : 'Failed to connect to the pipeline server. Make sure the backend is running and reachable.';
