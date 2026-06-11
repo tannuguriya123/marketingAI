@@ -12,10 +12,11 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: apiProxyTarget,
+        target: 'https://marketingai-kzfn.onrender.com',
         changeOrigin: true,
-      }
-    }
-  }
+        secure: true,
+      },
+    },
+  },
 });
 
