@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import axios from 'axios';
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/+$/, '');
-const GENERATE_ENDPOINT = `${API_BASE_URL}/api/generate`;
+const configuredApiBaseUrl = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/+$/, '');
+const apiBaseUrl = import.meta.env.DEV ? configuredApiBaseUrl : '';
+const GENERATE_ENDPOINT = `${apiBaseUrl}/api/generate`;
 
 function App() {
   const [url, setUrl] = useState('');

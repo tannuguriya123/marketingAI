@@ -6,7 +6,33 @@ const { analyzeContent } = require('./services/llm');
 const { generateImage } = require('./services/vision');
 
 const app = express();
-app.use(cors());
+
+const defaultAllowedOrigins = [
+    'https://marketing-ai-tan.vercel.app',
+    'http://localhost:5173',
+    'http://127.0.0.1:5173'
+];
+
+const allowedOrigins = (process.env.CORS_ORIGINS || defaultAllowedOrigins.join(','))
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
+const corsOptions = {
+    origin(origin, callback) {
+        if (!origin || allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+
+        return callback(new Error(`CORS blocked origin: ${origin}`));
+    },
+    methods: ['GET', 'POST', 'OPTIONS'],
+    allowedHeaders: ['Content-Type'],
+    optionsSuccessStatus: 204
+};
+
+app.use(cors(corsOptions));
+app.options(/.*/, cors(corsOptions));
 app.use(express.json());
 
 const isValidHttpUrl = (value) => {
